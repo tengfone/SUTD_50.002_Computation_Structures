@@ -1,0 +1,263 @@
+.include "C:\Users\phang\Desktop\50002\nominal.jsim"
+.include "C:\Users\phang\Desktop\50002\stdcell.jsim"
+.include "C:\Users\phang\Desktop\50002\lab3checkoff_10.jsim"
+
+// 1bit Full adder - from lab 2
+.subckt FA a b ci s co
+*CODE HERE
+Xxor1 a b d xor2
+Xxor2 d ci s xor2 
+
+Xnand1 a ci 1 nand2
+Xnand2 a b 2 nand2
+Xnand3 b ci 3 nand2
+Xnand4 1 2 3 co nand3
+.ends
+
+// part a: 32-bit adder
+.subckt adder32 ALUFN[0] A[31:0] B[31:0] s[31:0] z v n
+Xxor B[31:0] ALUFN0#32 XB[31:0] xor2
+Xbit0 A[0] XB[0] ALUFN[0] s[0] c[0] FA
+Xbit A[31:1] XB[31:1] c[30:0] s[31:1] c[31:1] FA
+
+*Z
+Xz1 s[0:7] s[8:15] s[16:23] s[24:31] o[0:7] or4
+Xz2 o[0:1] o[2:3] o[4:5] o[6:7] oz[0:1] or4
+Xz3 oz[0] oz[1] z nor2
+*V
+Xv1 XB[31] bnot inverter
+Xv2 s[31] snot inverter
+Xv3 A[31] anot inverter
+Xv4 A[31] XB[31] snot g1 and3
+Xv5 anot bnot s[31] g2 and3
+Xv6 g1 g2 v or2
+*N
+.connect s[31] n
+.ends
+
+// part b: compare
+.subckt compare32 ALUFN[2:1] z v n cmp[31:0]
+.connect z o1
+Xlt n v o2 xor2
+Xlte z o2 o3 or2
+Xdefault cmp[31:1] constant0
+Xoutput ALUFN[1] ALUFN[2] 0 o1 o2 o3 cmp[0] mux4
+.ends
+
+// part c: boolean
+.subckt boole32 ALUFN[3:0] A[31:0] B[31:0] boole[31:0]
+Xbool A[31:0] B[31:0] ALUFN0#32 ALUFN1#32 ALUFN2#32 ALUFN3#32 boole[31:0] mux4
+.ends
+
+// part d: shifter
+.subckt shift32 ALUFN[1:0] A[31:0] B[4:0] shift[31:0]
+* Shift Left
+Xhl1 B[4]#32 A[31:0] A[15:0] 0#16 W[31:0] mux2
+Xhl2 B[3]#32 W[31:0] W[23:0] 0#8 X[31:0] mux2
+Xhl3 B[2]#32 X[31:0] X[27:0] 0#4 Y[31:0] mux2
+Xhl4 B[1]#32 Y[31:0] Y[29:0] 0#2 Z[31:0] mux2
+Xhl5 B[0]#32 Z[31:0] Z[30:0] 0 SL[31:0] mux2
+
+* Shift Right
+Xhr1 B[4]#32 A[31:0] 0#16 A[31:16] C[31:0] mux2
+Xhr2 B[3]#32 C[31:0] 0#8 C[31:8] D[31:0] mux2
+Xhr3 B[2]#32 D[31:0] 0#4 D[31:4] E[31:0] mux2
+Xhr4 B[1]#32 E[31:0] 0#2 E[31:2] F[31:0] mux2
+Xhr5 B[0]#32 F[31:0] 0 F[31:1] SR[31:0] mux2
+
+*Shift Right with Sign Extension
+Xra1 B[4]#32 A[31:0] A[31]#16 A[31:16] G[31:0] mux2
+Xra2 B[3]#32 G[31:0] G[31]#8 G[31:8] H[31:0] mux2
+Xra3 B[2]#32 H[31:0] H[31]#4 H[31:4] I[31:0] mux2
+Xra4 B[1]#32 I[31:0] I[31]#2 I[31:2] J[31:0] mux2
+Xra5 B[0]#32 J[31:0] J[31] J[31:1] RA[31:0] mux2
+*Combination
+Xout ALUFN[0]#32 ALUFN[1]#32 SL[31:0] SR[31:0] 0#32 RA[31:0] shift[31:0] mux4
+.ends
+
+// part e: combine a), b), c) ,d)
+*.subckt alu ALUFN[5:0] A[31:0] B[31:0] alu[31:0] z v n
+*Xadder ALUFN[0] A[31:0] B[31:0] out[31:0] z v n adder32
+*Xbool ALUFN[3:0] A[31:0] B[31:0] boole[31:0] boole32 
+*Xshift ALUFN[1:0] A[31:0] B[4:0] shift[31:0] shift32
+*Xcompare ALUFN[2:1] z v n cmp[31:0] compare32
+*Xalu ALUFN[4]#32 ALUFN[5]#32 out[31:0] boole[31:0] shift[31:0] cmp[31:0] alu[31:0] mux4
+*.ends
+
+
+// part f: multiply
+.subckt multiply32 A[31:0] B[31:0] P[31:0]
+
+*level 0
+Xb01and B[0] A[0] P[0] and2
+Xb031and B[0]#31 A[31:1] out0A[31:1] and2
+
+*level 1
+Xb1and B[1]#31 A[30:0] out1A[30:0] and2
+Xb1FA1 out0A[1] out1A[0] 0 P[1] Fac1a[0] FA
+Xb1FA31 out0A[31:2] out1A[30:1] Fac1a[29:0] sum1A[30:1] Fac1a[30:1] FA
+
+*level 2
+Xb2and B[2]#30 A[29:0] out2A[29:0] and2
+Xb2FA1 sum1A[1] out2A[0] 0 P[2] Fac2a[0] FA
+Xb2FA31 sum1A[30:2] out2A[29:1] Fac2a[28:0] sum2A[29:1] Fac2a[29:1] FA
+
+*level 3
+Xb3and B[3]#29 A[28:0] out3A[28:0] and2
+Xb3FA1 sum2A[1] out3A[0] 0 P[3] Fac3a[0] FA
+Xb3FA31 sum2A[29:2] out3A[28:1] Fac3a[27:0] sum3A[28:1] Fac3a[28:1] FA
+
+*level 4
+Xb4and B[4]#28 A[27:0] out4A[27:0] and2
+Xb4FA1 sum3A[1] out4A[0] 0 P[4] Fac4a[0] FA
+Xb4FA31 sum3A[28:2] out4A[27:1] Fac4a[26:0] sum4A[27:1] Fac4a[27:1] FA
+
+*level 5
+Xb5and B[5]#27 A[26:0] out5A[26:0] and2
+Xb5FA1 sum4A[1] out5A[0] 0 P[5] Fac5a[0] FA
+Xb5FA31 sum4A[27:2] out5A[26:1] Fac5a[25:0] sum5A[26:1] Fac5a[26:1] FA
+
+*level 6
+Xb6and B[6]#26 A[25:0] out6A[25:0] and2
+Xb6FA1 sum5A[1] out6A[0] 0 P[6] Fac6a[0] FA
+Xb6FA31 sum5A[26:2] out6A[25:1] Fac6a[24:0] sum6A[25:1] Fac6a[25:1] FA
+
+*level 7
+Xb7and B[7]#25 A[24:0] out7A[24:0] and2
+Xb7FA1 sum6A[1] out7A[0] 0 P[7] Fac7a[0] FA
+Xb7FA31 sum6A[25:2] out7A[24:1] Fac7a[23:0] sum7A[24:1] Fac7a[24:1] FA
+
+*level 8
+Xb8and B[8]#24 A[23:0] out8A[23:0] and2
+Xb8FA1 sum7A[1] out8A[0] 0 P[8] Fac8a[0] FA
+Xb8FA31 sum7A[24:2] out8A[23:1] Fac8a[22:0] sum8A[23:1] Fac8a[23:1] FA
+
+*level 9
+Xb9and B[9]#23 A[22:0] out9A[22:0] and2
+Xb9FA1 sum8A[1] out9A[0] 0 P[9] Fac9a[0] FA
+Xb9FA31 sum8A[23:2] out9A[22:1] Fac9a[21:0] sum9A[22:1] Fac9a[22:1] FA
+
+*level 10
+Xb10and B[10]#22 A[21:0] out10A[21:0] and2
+Xb10FA1 sum9A[1] out10A[0] 0 P[10] Fac10a[0] FA
+Xb10FA31 sum9A[22:2] out10A[21:1] Fac10a[20:0] sum10A[21:1] Fac10a[21:1] FA
+
+*level 11
+Xb11and B[11]#21 A[20:0] out11A[20:0] and2
+Xb11FA1 sum10A[1] out11A[0] 0 P[11] Fac11a[0] FA
+Xb11FA31 sum10A[21:2] out11A[20:1] Fac11a[19:0] sum11A[20:1] Fac11a[20:1] FA
+
+*level 12
+Xb12and B[12]#20 A[19:0] out12A[19:0] and2
+Xb12FA1 sum11A[1] out12A[0] 0 P[12] Fac12a[0] FA
+Xb12FA31 sum11A[20:2] out12A[19:1] Fac12a[18:0] sum12A[19:1] Fac12a[19:1] FA
+
+*level 13
+Xb13and B[13]#19 A[18:0] out13A[18:0] and2
+Xb13FA1 sum12A[1] out13A[0] 0 P[13] Fac13a[0] FA
+Xb13FA31 sum12A[19:2] out13A[18:1] Fac13a[17:0] sum13A[18:1] Fac13a[18:1] FA
+
+*level 14
+Xb14and B[14]#18 A[17:0] out14A[17:0] and2
+Xb14FA1 sum13A[1] out14A[0] 0 P[14] Fac14a[0] FA
+Xb14FA31 sum13A[18:2] out14A[17:1] Fac14a[16:0] sum14A[17:1] Fac14a[17:1] FA
+
+*level 15
+Xb15and B[15]#17 A[16:0] out15A[16:0] and2
+Xb15FA1 sum14A[1] out15A[0] 0 P[15] Fac15a[0] FA
+Xb15FA31 sum14A[17:2] out15A[16:1] Fac15a[15:0] sum15A[16:1] Fac15a[16:1] FA
+
+*level 16
+Xb16and B[16]#16 A[15:0] out16A[15:0] and2
+Xb16FA1 sum15A[1] out16A[0] 0 P[16] Fac16a[0] FA
+Xb16FA31 sum15A[16:2] out16A[15:1] Fac16a[14:0] sum16A[15:1] Fac16a[15:1] FA
+
+*level 17
+Xb17and B[17]#15 A[14:0] out17A[14:0] and2
+Xb17FA1 sum16A[1] out17A[0] 0 P[17] Fac17a[0] FA
+Xb17FA31 sum16A[15:2] out17A[14:1] Fac17a[13:0] sum17A[14:1] Fac17a[14:1] FA
+
+*level 18
+Xb18and B[18]#14 A[13:0] out18A[13:0] and2
+Xb18FA1 sum17A[1] out18A[0] 0 P[18] Fac18a[0] FA
+Xb18FA31 sum17A[14:2] out18A[13:1] Fac18a[12:0] sum18A[13:1] Fac18a[13:1] FA
+
+*level 19
+Xb19and B[19]#13 A[12:0] out19A[12:0] and2
+Xb19FA1 sum18A[1] out19A[0] 0 P[19] Fac19a[0] FA
+Xb19FA31 sum18A[13:2] out19A[12:1] Fac19a[11:0] sum19A[12:1] Fac19a[12:1] FA
+
+*level 20
+Xb20and B[20]#12 A[11:0] out20A[11:0] and2
+Xb20FA1 sum19A[1] out20A[0] 0 P[20] Fac20a[0] FA
+Xb20FA31 sum19A[12:2] out20A[11:1] Fac20a[10:0] sum20A[11:1] Fac20a[11:1] FA
+
+*level 21
+Xb21and B[21]#11 A[10:0] out21A[10:0] and2
+Xb21FA1 sum20A[1] out21A[0] 0 P[21] Fac21a[0] FA
+Xb21FA31 sum20A[11:2] out21A[10:1] Fac21a[9:0] sum21A[10:1] Fac21a[10:1] FA
+
+*level 22
+Xb22and B[22]#10 A[9:0] out22A[9:0] and2
+Xb22FA1 sum21A[1] out22A[0] 0 P[22] Fac22a[0] FA
+Xb22FA31 sum21A[10:2] out22A[9:1] Fac22a[8:0] sum22A[9:1] Fac22a[9:1] FA
+
+*level 23
+Xb23and B[23]#9 A[8:0] out23A[8:0] and2
+Xb23FA1 sum22A[1] out23A[0] 0 P[23] Fac23a[0] FA
+Xb23FA31 sum22A[9:2] out23A[8:1] Fac23a[7:0] sum23A[8:1] Fac23a[8:1] FA
+
+*level 24
+Xb24and B[24]#8 A[7:0] out24A[7:0] and2
+Xb24FA1 sum23A[1] out24A[0] 0 P[24] Fac24a[0] FA
+Xb24FA31 sum23A[8:2] out24A[7:1] Fac24a[6:0] sum24A[7:1] Fac24a[7:1] FA
+
+*level 25
+Xb25and B[25]#7 A[6:0] out25A[6:0] and2
+Xb25FA1 sum24A[1] out25A[0] 0 P[25] Fac25a[0] FA
+Xb25FA31 sum24A[7:2] out25A[6:1] Fac25a[5:0] sum25A[6:1] Fac25a[6:1] FA
+
+*level 26
+Xb26and B[26]#6 A[5:0] out26A[5:0] and2
+Xb26FA1 sum25A[1] out26A[0] 0 P[26] Fac26a[0] FA
+Xb26FA31 sum25A[6:2] out26A[5:1] Fac26a[4:0] sum26A[5:1] Fac26a[5:1] FA
+
+*level 27
+Xb27and B[27]#5 A[4:0] out27A[4:0] and2
+Xb27FA1 sum26A[1] out27A[0] 0 P[27] Fac27a[0] FA
+Xb27FA31 sum26A[5:2] out27A[4:1] Fac27a[3:0] sum27A[4:1] Fac27a[4:1] FA
+
+*level 28
+Xb28and B[28]#4 A[3:0] out28A[3:0] and2
+Xb28FA1 sum27A[1] out28A[0] 0 P[28] Fac28a[0] FA
+Xb28FA31 sum27A[4:2] out28A[3:1] Fac28a[2:0] sum28A[3:1] Fac28a[3:1] FA
+
+*level 29
+Xb29and B[29]#3 A[2:0] out29A[2:0] and2
+Xb29FA1 sum28A[1] out29A[0] 0 P[29] Fac29a[0] FA
+Xb29FA31 sum28A[3:2] out29A[2:1] Fac29a[1:0] sum29A[2:1] Fac29a[2:1] FA
+
+*level 30
+Xb30and B[30]#2 A[1:0] out30A[1:0] and2
+Xb30FA1 sum29A[1] out30A[0] 0 P[30] Fac30a[0] FA
+Xb30FA31 sum29A[2] out30A[1] Fac30a[0] sum30A[1] Fac30a[1] FA
+
+*level 31
+Xb31and B[31] A[0] out31A[0] and2
+Xb31FA sum30A[1] out31A[0] 0 P[31] Fac31a[0] FA
+
+.ends
+
+// part e: combine a), b), c) ,d) TOGETHER WITH MULTIPLIER
+.subckt alu ALUFN[5:0] A[31:0] B[31:0] alu[31:0] z v n
+Xadder ALUFN[0] A[31:0] B[31:0] out[31:0] z v n adder32
+Xbool ALUFN[3:0] A[31:0] B[31:0] boole[31:0] boole32 
+Xshift ALUFN[1:0] A[31:0] B[4:0] shift[31:0] shift32
+Xcompare ALUFN[2:1] z v n cmp[31:0] compare32
+
+* This part adds the selector for multiplier
+Xmul A[31:0] B[31:0] P[31:0] multiply32
+Xselector ALUFN[0]#32 ALUFN[1]#32 out[31:0] out[31:0] P[31:0] 0#32 s[31:0] mux4
+
+Xalu ALUFN[4]#32 ALUFN[5]#32 s[31:0] boole[31:0] shift[31:0] cmp[31:0] alu[31:0] mux4
+.ends
