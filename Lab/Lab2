@@ -1,0 +1,23 @@
+.include "C:\Users\phang\Desktop\50002\nominal.jsim"
+.include "C:\Users\phang\Desktop\50002\lab2checkoff.jsim"
+.include "C:\Users\phang\Desktop\50002\library.jsim"
+
+.subckt FA a b ci s co
+*CODE HERE
+Xxor1 a b d xor2
+Xxor2 d ci s xor2 
+
+Xnand1 a ci 1 nand2
+Xnand2 a b 2 nand2
+Xnand3 b ci 3 nand2
+Xnand4 1 2 3 co nand3
+
+.ends
+.subckt ADDER4 a3 a2 a1 a0 b3 b2 b1 b0 s4 s3 s2 s1 s0
+* remember the node named "0" is the ground node
+* nodes c0 through c3 are internal to the ADDER module
+Xbit0 a0 b0 0 s0 c0 FA
+Xbit1 a1 b1 c0 s1 c1 FA
+Xbit2 a2 b2 c1 s2 c2 FA
+Xbit3 a3 b3 c2 s3 s4 FA
+.ends
