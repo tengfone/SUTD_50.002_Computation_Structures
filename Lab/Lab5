@@ -1,0 +1,118 @@
+.include C:\Users\phang\Desktop\50002\beta.uasm
+.include C:\Users\phang\Desktop\50002\lab5checkoff.uasm
+
+count_bull_cows:
+PUSH(LP)
+PUSH(BP)
+MOVE(SP,BP)
+
+PUSH(R1) |int a
+PUSH(R2) |int b
+PUSH(R3) |int bulls
+PUSH(R4) |int cows
+PUSH(R5) |int i
+PUSH(R6) |int j
+PUSH(R7) |int btemp
+PUSH(R8) |int atry
+PUSH(R9) |int btry
+PUSH(R10) |int mask
+PUSH(R11) | compare first for loop
+PUSH(R12) | temp mask a
+PUSH(R13) | temp mask b
+PUSH(R14) | temp if 1
+PUSH(R15) | temp if 2
+PUSH(R16) | temp
+PUSH(R17) | temp if 3
+
+CMOVE(0,R3) | bulls = 0
+CMOVE(0xF,R10) | mask = 0xF
+CMOVE(0,R5) | set i = 0
+LD(BP,-12,R1) | load a
+LD(BP,-16,R2) | load b
+
+BR(endfor1) | first for loop from the back
+
+for1:
+AND(R1,R10,R12) | a&mask
+AND(R2,R10,R13) | b&mask
+CMPEQ(R12,R13,R14) | compare (a&mask == b&mask)
+BEQ(R14,exitif1,R31) | first if
+ADDC(R3,1,R3) | bulls += 1
+OR(R1,R10,R1) | a = a | mask
+OR(R2,R10,R2) | b = b | mask
+
+exitif1:
+SHLC(R10,4,R10) | else mask = mask << 4
+ADDC(R5,1,R5) | i++ for loop
+
+endfor1:
+CMPLTC(R5,4,R11) | check i < 4
+BNE(R11,for1,R31) | R11 is 1 if true, looping back if 0
+
+CMOVE(0,R4) | cows = 0
+CMOVE(0,R5) | reset i = 0 for use on 2nd for loop
+BR(endfor2)
+
+for2:
+ANDC(R1,0xF,R8) | atry = a & 0xF
+SHRC(R1,4,R1) | a = a >> 4
+CMPEQC(R8,0xF,R15) | atry != 0xF
+BNE(R15,exitif2,R31) | if
+ADDC(R2,0,R7) | btemp = b
+CMOVE(0xF,R10) | mask = 0xF
+
+CMOVE(0,R6) | j = 0
+BR(endfor3)
+
+for3:
+ANDC(R7,0xF,R9) | btry = btemp & 0xF
+SHRC(R7,4,R7) | btemp = btemp >> 4
+CMPEQ(R9,R8,R17) | (btry == atry)
+BEQ(R17,exitif3,R31) | if
+ADDC(R4,1,R4) | cows = cows + 1
+OR(R2,R10,R2) | b = b | mask
+BR(exitif2)
+
+exitif3:
+SHLC(R10,4,R10) | mask << 4
+ADDC(R6,1,R6) | j++
+
+endfor3:
+CMPLTC(R6,4,R14) | check if j < 4
+BNE(R14,for3,R31) | R16 is 1 if true, looping back if 0
+
+exitif2:
+ADDC(R5,1,R5) | i++
+
+endfor2:
+CMPLTC(R5,4,R11) | check i < 4
+BNE(R11,for2,R31) | R11 is 1 if true, looping back if 0
+SHLC(R3,4,R3) | bulls << 4
+ADD(R3,R4,R0) | return cows + bulls << 4 to Reg 0
+
+POP(R17)
+POP(R16)
+POP(R15)
+POP(R14)
+POP(R13)
+POP(R12)
+POP(R11)
+POP(R10)
+POP(R9)
+POP(R8)
+POP(R7)
+POP(R6)
+POP(R5)
+POP(R4)
+POP(R3)
+POP(R2)
+POP(R1)
+
+MOVE(BP,SP)
+POP(BP)
+POP(LP)
+RTN()
+
+StackBase: 
+LONG(.+4)
+.=.+0x1000
